@@ -95,53 +95,77 @@
     </div>
 
     <script>
+        const wordInput = document.getElementById('wordInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const loader = document.getElementById('loader');
+        const errorDiv = document.getElementById('error');
+        const resultDiv = document.getElementById('result');
+
+        // Result display elements
+        const germanWordEl = document.getElementById('germanWord');
+        const genderEl = document.getElementById('gender');
+        const definiteArticleEl = document.getElementById('definiteArticle');
+        const indefiniteArticleEl = document.getElementById('indefiniteArticle');
+        const translationEl = document.getElementById('translation');
+
+        // Gemini Example Sentence Elements
+        const sentenceBtn = document.getElementById('sentenceBtn');
+        const sentenceResultContainer = document.getElementById('sentenceResultContainer');
+        const sentenceLoader = document.getElementById('sentenceLoader');
+        const sentenceError = document.getElementById('sentenceError');
+        const sentence = document.getElementById('sentence');
+        const germanSentence = document.getElementById('germanSentence');
+        const englishSentence = document.getElementById('englishSentence');
+
+        // Store current word data
+        let currentWordData = null;
+
         const handleSearch = async () => {
-        const word = wordInput.value.trim();
-        if (!word) {
-            showError("Please enter a German word.");
-            return;
-        }
-
-        hideAll();
-        loader.classList.remove('hidden');
-
-        // The prompt is now part of the payload, so we need to adjust
-        const payload = {
-            contents: [{ parts: [{ text: `For the German noun "${word}", provide its gender (Masculine, Feminine, or Neuter), the nominative definite article with the noun, the nominative indefinite article with the noun, and a common English translation. If the word is not a German noun, just provide the English translation and leave the other fields blank or with a 'N/A' value.` }] }],
-            generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: "OBJECT",
-                properties: {
-                "gender": { "type": "STRING", "description": "The gender of the noun (Masculine, Feminine, or Neuter)." },
-                "definiteArticle": { "type": "STRING", "description": "The definite article plus the noun (e.g., 'der Tisch')." },
-                "indefiniteArticle": { "type": "STRING", "description": "The indefinite article plus the noun (e.g., 'ein Tisch')." },
-                "englishTranslation": { "type": "STRING", "description": "The English translation of the noun." }
-                },
-                required: ["gender", "definiteArticle", "indefiniteArticle", "englishTranslation"]
+            const word = wordInput.value.trim();
+            if (!word) {
+                showError("Please enter a German word.");
+                return;
             }
-            }
-        };
 
-        try {
-            // Call your server proxy instead of the external API
-            const response = await fetch('/ .netlify/functions/gemini-proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-            });
+            hideAll();
+            loader.classList.remove('hidden');
+            
+            // This is the new prompt that the Netlify Function will use
+            const prompt = `For the German noun "${word}", provide its gender (Masculine, Feminine, or Neuter), the nominative definite article with the noun, the nominative indefinite article with the noun, and a common English translation. If the word is not a German noun, just provide the English translation and leave the other fields blank or with a 'N/A' value.`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "gender": { "type": "STRING", "description": "The gender of the noun (Masculine, Feminine, or Neuter)." },
+                            "definiteArticle": { "type": "STRING", "description": "The definite article plus the noun (e.g., 'der Tisch')." },
+                            "indefiniteArticle": { "type": "STRING", "description": "The indefinite article plus the noun (e.g., 'ein Tisch')." },
+                            "englishTranslation": { "type": "STRING", "description": "The English translation of the noun." }
+                        },
+                        required: ["gender", "definiteArticle", "indefiniteArticle", "englishTranslation"]
+                    }
+                }
+            };
 
-            if (!response.ok) {
-            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            try {
+                // Updated fetch URL to call the Netlify Function
+                const response = await fetch('/.netlify/functions/gemini-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                const result = await response.json();
+                processApiResponse(result, word);
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                showError(err.message);
+            } finally {
+                loader.classList.add('hidden');
             }
-            const result = await response.json();
-            processApiResponse(result, word);
-        } catch (err) {
-            console.error("Fetch Error:", err);
-            showError(err.message);
-        } finally {
-            loader.classList.add('hidden');
-        }
         };
 
         const getExampleSentence = async () => {
@@ -151,7 +175,9 @@
             sentence.classList.add('hidden');
             sentenceError.classList.add('hidden');
 
+            // This is the new prompt for the sentence
             const prompt = `Create a simple German example sentence using the word "${currentWordData.word}". Also provide the English translation of that sentence.`;
+            
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
@@ -166,14 +192,13 @@
                     }
                 }
             };
-            
             try {
-                const response = await fetch('/ .netlify/functions/gemini-proxy', {
+                // Updated fetch URL to call the Netlify Function
+                const response = await fetch('/.netlify/functions/gemini-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
                 if (!response.ok) throw new Error(`Server error: ${response.status} ${response.statusText}`);
                 const result = await response.json();
 
@@ -193,6 +218,96 @@
                 sentenceLoader.classList.add('hidden');
             }
         };
+        
+        searchBtn.addEventListener('click', handleSearch);
+        wordInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') handleSearch();
+        });
+        sentenceBtn.addEventListener('click', getExampleSentence);
+
+        function processApiResponse(result, originalWord) {
+            if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                try {
+                    const parsedJson = JSON.parse(result.candidates[0].content.parts[0].text);
+                    
+                    // Check for valid articles. If they are missing or don't make sense,
+                    // it's likely not a noun.
+                    if (parsedJson.definiteArticle && parsedJson.indefiniteArticle && parsedJson.definiteArticle.toLowerCase() !== 'n/a') {
+                        displayResult(parsedJson, originalWord);
+                        currentWordData = { ...parsedJson, word: originalWord };
+                    } else {
+                        // If it's not a valid noun, handle it differently
+                        handleNonNoun(parsedJson, originalWord);
+                        currentWordData = { ...parsedJson, word: originalWord };
+                    }
+                } catch(e) {
+                    console.error("JSON parsing error:", e);
+                    showError(`Could not process the data for "${originalWord}". The word might not be a valid German noun.`);
+                }
+            } else {
+                showError(`Could not find information for "${originalWord}". Please check the spelling or try another word.`);
+            }
+        }
+
+        function handleNonNoun(data, word) {
+            hideAll();
+            const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1);
+            
+            // Customize the message for non-nouns
+            germanWordEl.textContent = capitalizedWord;
+            genderEl.textContent = 'Not a noun';
+            definiteArticleEl.textContent = 'N/A';
+            indefiniteArticleEl.textContent = 'N/A';
+            translationEl.textContent = data.englishTranslation || 'N/A';
+
+            resultDiv.classList.remove('hidden');
+            
+            // Re-enable button logic is handled in hideAll, so no need to repeat here
+            const infoMessage = document.createElement('div');
+            infoMessage.id = 'nonNounInfoMessage';  // unique id
+            infoMessage.className = 'mt-4 text-center text-gray-500 text-sm';
+            infoMessage.textContent = `"${capitalizedWord}" is not a German noun, so it does not have an article.`;
+            resultDiv.prepend(infoMessage);
+        }
+
+        function displayResult(data, word) {
+            const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1);
+            
+            germanWordEl.textContent = capitalizedWord;
+            genderEl.textContent = data.gender || 'N/A';
+            definiteArticleEl.textContent = data.definiteArticle || 'N/A';
+            indefiniteArticleEl.textContent = data.indefiniteArticle || 'N/A';
+            translationEl.textContent = data.englishTranslation || 'N/A';
+
+            resultDiv.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            hideAll();
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        function hideAll() {
+            errorDiv.classList.add('hidden');
+            resultDiv.classList.add('hidden');
+            loader.classList.add('hidden');
+            sentence.classList.add('hidden');
+            sentenceError.classList.add('hidden');
+            sentenceLoader.classList.add('hidden');
+            
+            // Reset the sentence button to its default enabled state
+            sentenceBtn.disabled = false;
+            sentenceBtn.textContent = "✨ Show Example Sentence";
+            sentenceBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            sentenceBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+            
+            // Clear the info message if it exists
+            const oldInfoMessage = document.getElementById('nonNounInfoMessage');
+            if (oldInfoMessage) {
+                oldInfoMessage.remove();
+            }
+        }
     </script>
 </body>
 </html>
