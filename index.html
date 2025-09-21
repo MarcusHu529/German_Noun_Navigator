@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>German Article Finder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="container mx-auto p-4 max-w-md">
+        <div class="bg-white rounded-lg shadow-xl p-6">
+            <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">German Article Finder</h1>
+            <p class="text-center text-gray-500 mb-6">Enter a German noun to find its articles and translation.</p>
+            
+            <!-- Search Input -->
+            <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                <input type="text" id="wordInput" class="flex-grow w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Handy, Buch, Sonne">
+                <button id="searchBtn" class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300">
+                    Search
+                </button>
+            </div>
+
+            <!-- Results, Loader, and Error Messages -->
+            <div id="resultContainer" class="mt-6 text-center">
+                <!-- Loader -->
+                <div id="loader" class="hidden mx-auto loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
+                
+                <!-- Error Message -->
+                <div id="error" class="hidden text-red-500 font-semibold p-3 bg-red-100 rounded-lg"></div>
+
+                <!-- Success Result -->
+                <div id="result" class="hidden">
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h2 id="germanWord" class="text-3xl font-bold text-gray-800"></h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-left">
+                           <div class="p-3 bg-white rounded-lg border">
+                               <p class="text-sm text-gray-500">Gender</p>
+                               <p id="gender" class="text-lg font-semibold text-gray-700"></p>
+                           </div>
+                           <div class="p-3 bg-white rounded-lg border">
+                               <p class="text-sm text-gray-500">Definite Article</p>
+                               <p id="definiteArticle" class="text-lg font-semibold text-gray-700"></p>
+                           </div>
+                           <div class="p-3 bg-white rounded-lg border">
+                               <p class="text-sm text-gray-500">Indefinite Article</p>
+                               <p id="indefiniteArticle" class="text-lg font-semibold text-gray-700"></p>
+                           </div>
+                           <div class="p-3 bg-white rounded-lg border">
+                               <p class="text-sm text-gray-500">English Translation</p>
+                               <p id="translation" class="text-lg font-semibold text-gray-700 capitalize"></p>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="text-center text-gray-400 text-xs mt-4">
+            Powered by the DictionaryAPI
+        </footer>
+    </div>
+
+    <script>
+        const wordInput = document.getElementById('wordInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultContainer = document.getElementById('resultContainer');
+        const loader = document.getElementById('loader');
+        const errorDiv = document.getElementById('error');
+        const resultDiv = document.getElementById('result');
+
+        // Result display elements
+        const germanWordEl = document.getElementById('germanWord');
+        const genderEl = document.getElementById('gender');
+        const definiteArticleEl = document.getElementById('definiteArticle');
+        const indefiniteArticleEl = document.getElementById('indefiniteArticle');
+        const translationEl = document.getElementById('translation');
+
+        // Function to handle search logic
+        const handleSearch = async () => {
+            const word = wordInput.value.trim();
+            if (!word) {
+                showError("Please enter a German word.");
+                return;
+            }
+
+            // Reset UI
+            hideAll();
+            loader.classList.remove('hidden');
+
+            try {
+                // Use a free dictionary API
+                const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/de/${word}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error(`Could not find the word "${word}". Please check the spelling.`);
+                    } else {
+                        throw new Error(`API error: ${response.statusText}`);
+                    }
+                }
+
+                const data = await response.json();
+                processData(data, word);
+
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                loader.classList.add('hidden');
+            }
+        };
+        
+        // Add event listeners
+        searchBtn.addEventListener('click', handleSearch);
+        wordInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                handleSearch();
+            }
+        });
+
+        // Function to process the API data and find article information
+        function processData(data, originalWord) {
+            let gender = null;
+            let translation = 'Not found';
+
+            // The API response is an array, we'll check the first entry.
+            const entry = data[0];
+            
+            // Find the English translation
+            if (entry && entry.meanings) {
+                const nounMeaning = entry.meanings.find(m => m.partOfSpeech === 'noun');
+                if (nounMeaning && nounMeaning.definitions[0] && nounMeaning.definitions[0].definition) {
+                    // Extract the primary English meaning. Often the API gives a detailed definition.
+                    // We will take the first part of it.
+                    translation = nounMeaning.definitions[0].definition.split(';')[0].split(',')[0];
+                }
+            }
+            
+            // Infer gender by looking for articles in the 'phonetics' text field which often contains it.
+            // This is a heuristic as the API doesn't provide a direct gender field.
+            if (entry && entry.phonetics) {
+                for (const phonetic of entry.phonetics) {
+                    if (phonetic.text && phonetic.text.includes('der')) {
+                        gender = 'Masculine';
+                        break;
+                    } else if (phonetic.text && phonetic.text.includes('die')) {
+                        gender = 'Feminine';
+                        break;
+                    } else if (phonetic.text && phonetic.text.includes('das')) {
+                        gender = 'Neuter';
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: If gender is not found in phonetics, check the word itself if it starts with an article
+            // This is less reliable but a good fallback.
+            if (!gender && entry.meanings) {
+                 for (const meaning of entry.meanings) {
+                    if(meaning.partOfSpeech === 'noun') {
+                        // The API sometimes provides the gender in the definition itself for some words
+                        const defText = meaning.definitions[0].definition.toLowerCase();
+                         if (defText.includes(' der ')) gender = 'Masculine';
+                         else if (defText.includes(' die ')) gender = 'Feminine';
+                         else if (defText.includes(' das ')) gender = 'Neuter';
+                         if (gender) break;
+                    }
+                }
+            }
+
+
+            if (gender) {
+                displayResult(gender, originalWord, translation);
+            } else {
+                showError(`Could not determine the gender for "${originalWord}". It might not be a noun.`);
+            }
+        }
+
+        // Function to display the final result
+        function displayResult(gender, word, translation) {
+            let definite = '';
+            let indefinite = '';
+
+            const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1);
+
+            switch(gender) {
+                case 'Masculine':
+                    definite = `der ${capitalizedWord}`;
+                    indefinite = `ein ${capitalizedWord}`;
+                    break;
+                case 'Feminine':
+                    definite = `die ${capitalizedWord}`;
+                    indefinite = `eine ${capitalizedWord}`;
+                    break;
+                case 'Neuter':
+                    definite = `das ${capitalizedWord}`;
+                    indefinite = `ein ${capitalizedWord}`;
+                    break;
+            }
+            
+            germanWordEl.textContent = capitalizedWord;
+            genderEl.textContent = gender;
+            definiteArticleEl.textContent = definite;
+            indefiniteArticleEl.textContent = indefinite;
+            translationEl.textContent = translation;
+
+            resultDiv.classList.remove('hidden');
+        }
+
+        // Utility to show error messages
+        function showError(message) {
+            hideAll();
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        // Utility to hide all dynamic sections
+        function hideAll() {
+            errorDiv.classList.add('hidden');
+            resultDiv.classList.add('hidden');
+            loader.classList.add('hidden');
+        }
+
+    </script>
+</body>
+</html>
