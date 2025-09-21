@@ -69,6 +69,22 @@
                                <p id="translation" class="text-lg font-semibold text-gray-700 capitalize"></p>
                            </div>
                         </div>
+                         <!-- Gemini Feature: Example Sentence Button -->
+                        <div class="mt-4">
+                            <button id="sentenceBtn" class="w-full px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 transition-colors duration-300">
+                                ✨ Show Example Sentence
+                            </button>
+                        </div>
+                        <!-- Container for the sentence -->
+                        <div id="sentenceResultContainer" class="mt-4 text-center">
+                            <div id="sentenceLoader" class="hidden mx-auto loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8 mb-2"></div>
+                            <div id="sentenceError" class="hidden text-red-500 font-semibold p-3 bg-red-100 rounded-lg text-sm"></div>
+                            <div id="sentence" class="hidden bg-white p-4 rounded-lg border border-gray-200 text-left">
+                                <p class="text-sm text-gray-500">Example Sentence</p>
+                                <p id="germanSentence" class="text-md font-medium text-gray-700 mt-1"></p>
+                                <p id="englishSentence" class="text-md text-gray-600 mt-1 italic"></p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -92,7 +108,18 @@
         const indefiniteArticleEl = document.getElementById('indefiniteArticle');
         const translationEl = document.getElementById('translation');
 
-        // Function to handle search logic
+        // Gemini Example Sentence Elements
+        const sentenceBtn = document.getElementById('sentenceBtn');
+        const sentenceResultContainer = document.getElementById('sentenceResultContainer');
+        const sentenceLoader = document.getElementById('sentenceLoader');
+        const sentenceError = document.getElementById('sentenceError');
+        const sentence = document.getElementById('sentence');
+        const germanSentence = document.getElementById('germanSentence');
+        const englishSentence = document.getElementById('englishSentence');
+
+        // Store current word data
+        let currentWordData = null;
+
         const handleSearch = async () => {
             const word = wordInput.value.trim();
             if (!word) {
@@ -103,11 +130,12 @@
             hideAll();
             loader.classList.remove('hidden');
             
-            const apiKey = ""; // API key is handled by the environment.
+            // IMPORTANT: To run this on your local computer, you need a Gemini API key.
+            // 1. Get a key from Google AI Studio: https://aistudio.google.com/app/apikey
+            // 2. Paste the key below, replacing "YOUR_API_KEY_HERE".
+            const apiKey = "AIzaSyCsIIVrpwjkGbJl3RO7DICyEuxb44HTo6I"; 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
             const prompt = `For the German noun "${word}", provide its gender (Masculine, Feminine, or Neuter), the nominative definite article with the noun, the nominative indefinite article with the noun, and a common English translation.`;
-
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
@@ -126,39 +154,90 @@
             };
 
             try {
+                if (apiKey === "YOUR_API_KEY_HERE") {
+                    throw new Error("Please replace 'YOUR_API_KEY_HERE' with your actual Gemini API key.");
+                }
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
-                if (!response.ok) {
-                    throw new Error(`API error: ${response.status} ${response.statusText}`);
-                }
-
+                if (!response.ok) throw new Error(`API error: ${response.status} ${response.statusText}`);
                 const result = await response.json();
                 processApiResponse(result, word);
-
             } catch (err) {
                 console.error("Fetch Error:", err);
-                showError("Could not retrieve data. Please try again.");
+                showError(err.message);
             } finally {
                 loader.classList.add('hidden');
             }
         };
+
+        const getExampleSentence = async () => {
+            if (!currentWordData) return;
+
+            sentenceLoader.classList.remove('hidden');
+            sentence.classList.add('hidden');
+            sentenceError.classList.add('hidden');
+
+            // IMPORTANT: Make sure your API key is also set in the handleSearch function.
+            const apiKey = "AIzaSyCsIIVrpwjkGbJl3RO7DICyEuxb44HTo6I";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const prompt = `Create a simple German example sentence using the noun "${currentWordData.definiteArticle}". Also provide the English translation of that sentence.`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "german": { "type": "STRING", "description": "The German example sentence." },
+                            "english": { "type": "STRING", "description": "The English translation of the sentence." }
+                        },
+                        required: ["german", "english"]
+                    }
+                }
+            };
+             try {
+                if (apiKey === "YOUR_API_KEY_HERE") {
+                    throw new Error("API key is missing. Please add it to the script.");
+                }
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`API error: ${response.status} ${response.statusText}`);
+                const result = await response.json();
+
+                if (result.candidates && result.candidates[0].content?.parts?.[0]?.text) {
+                    const parsedJson = JSON.parse(result.candidates[0].content.parts[0].text);
+                    germanSentence.textContent = parsedJson.german;
+                    englishSentence.textContent = parsedJson.english;
+                    sentence.classList.remove('hidden');
+                } else {
+                    throw new Error("Could not generate sentence from API response.");
+                }
+            } catch (err) {
+                console.error("Sentence Fetch Error:", err);
+                sentenceError.textContent = "Sorry, I couldn't generate a sentence right now.";
+                sentenceError.classList.remove('hidden');
+            } finally {
+                sentenceLoader.classList.add('hidden');
+            }
+        };
         
-        // Add event listeners
         searchBtn.addEventListener('click', handleSearch);
         wordInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                handleSearch();
-            }
+            if (event.key === 'Enter') handleSearch();
         });
+        sentenceBtn.addEventListener('click', getExampleSentence);
 
         function processApiResponse(result, originalWord) {
-             if (result.candidates && result.candidates.length > 0 && result.candidates[0].content?.parts?.[0]?.text) {
+             if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                 try {
                     const parsedJson = JSON.parse(result.candidates[0].content.parts[0].text);
+                    currentWordData = parsedJson; // Store data for sentence generation
                     displayResult(parsedJson, originalWord);
                 } catch(e) {
                     console.error("JSON parsing error:", e);
@@ -169,7 +248,6 @@
             }
         }
 
-        // Function to display the final result
         function displayResult(data, word) {
             const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1);
             
@@ -182,18 +260,19 @@
             resultDiv.classList.remove('hidden');
         }
 
-        // Utility to show error messages
         function showError(message) {
             hideAll();
             errorDiv.textContent = message;
             errorDiv.classList.remove('hidden');
         }
         
-        // Utility to hide all dynamic sections
         function hideAll() {
             errorDiv.classList.add('hidden');
             resultDiv.classList.add('hidden');
             loader.classList.add('hidden');
+            sentence.classList.add('hidden');
+            sentenceError.classList.add('hidden');
+            sentenceLoader.classList.add('hidden');
         }
 
     </script>
