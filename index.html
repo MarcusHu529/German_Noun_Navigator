@@ -234,17 +234,73 @@
         sentenceBtn.addEventListener('click', getExampleSentence);
 
         function processApiResponse(result, originalWord) {
-             if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+            if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                 try {
                     const parsedJson = JSON.parse(result.candidates[0].content.parts[0].text);
-                    currentWordData = parsedJson; // Store data for sentence generation
-                    displayResult(parsedJson, originalWord);
-                } catch(e) {
+                    
+                    // Check for valid articles. If they are missing or don't make sense,
+                    // it's likely not a noun.
+                    if (parsedJson.definiteArticle && parsedJson.indefiniteArticle) {
+                        currentWordData = parsedJson;
+                        displayResult(parsedJson, originalWord);
+                    } else {
+                        // If it's not a valid noun, handle it differently
+                        handleNonNoun(parsedJson, originalWord);
+                    }
+                } catch (e) {
                     console.error("JSON parsing error:", e);
                     showError(`Could not process the data for "${originalWord}". The word might not be a valid German noun.`);
                 }
             } else {
                 showError(`Could not find information for "${originalWord}". Please check the spelling or try another word.`);
+            }
+        }
+
+        function handleNonNoun(data, word) {
+            hideAll();
+            const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1);
+            
+            // Customize the message for non-nouns
+            germanWordEl.textContent = capitalizedWord;
+            genderEl.textContent = 'Not a noun';
+            definiteArticleEl.textContent = 'N/A';
+            indefiniteArticleEl.textContent = 'N/A';
+            translationEl.textContent = data.englishTranslation || 'N/A';
+
+            resultDiv.classList.remove('hidden');
+            
+            // Since there are no articles, disable the sentence button and show a message
+            sentenceBtn.disabled = true;
+            sentenceBtn.textContent = "Cannot generate a sentence for this word";
+            sentenceBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+            sentenceBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+
+            // You can also add an informational message
+            const infoMessage = document.createElement('div');
+            infoMessage.className = 'mt-4 text-center text-gray-500 text-sm';
+            infoMessage.textContent = '"' + capitalizedWord + '" is not a German noun, so it does not have an article.';
+            resultDiv.prepend(infoMessage);
+        }
+
+        // You will also need to reset the button state on a new search
+        function hideAll() {
+            errorDiv.classList.add('hidden');
+            resultDiv.classList.add('hidden');
+            loader.classList.add('hidden');
+            sentence.classList.add('hidden');
+            sentenceError.classList.add('hidden');
+            sentenceLoader.classList.add('hidden');
+            
+            // Reset the sentence button
+            sentenceBtn.disabled = false;
+            sentenceBtn.textContent = "✨ Show Example Sentence";
+            sentenceBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            sentenceBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+            
+            // Clear the info message if it exists
+            const oldInfoMessage = resultDiv.querySelector('.text-sm');
+            if (oldInfoMessage) {
+                oldInfoMessage.remove();
             }
         }
 
@@ -266,14 +322,7 @@
             errorDiv.classList.remove('hidden');
         }
         
-        function hideAll() {
-            errorDiv.classList.add('hidden');
-            resultDiv.classList.add('hidden');
-            loader.classList.add('hidden');
-            sentence.classList.add('hidden');
-            sentenceError.classList.add('hidden');
-            sentenceLoader.classList.add('hidden');
-        }
+
 
     </script>
 </body>
