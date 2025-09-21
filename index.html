@@ -168,7 +168,7 @@
         };
 
         const getExampleSentence = async () => {
-            if (!currentWordData || !currentWordData.definiteArticle) return;
+            if (!currentWordData || !currentWordData.word) return;
 
             sentenceLoader.classList.remove('hidden');
             sentence.classList.add('hidden');
@@ -176,7 +176,7 @@
 
             const apiKey = "AIzaSyCsIIVrpwjkGbJl3RO7DICyEuxb44HTo6I";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            const prompt = `Create a simple German example sentence using the noun "${currentWordData.definiteArticle}". Also provide the English translation of that sentence.`;
+            const prompt = `Create a simple German example sentence using the word "${currentWordData.word}". Also provide the English translation of that sentence.`;
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
@@ -231,11 +231,12 @@
                     // Check for valid articles. If they are missing or don't make sense,
                     // it's likely not a noun.
                     if (parsedJson.definiteArticle && parsedJson.indefiniteArticle && parsedJson.definiteArticle.toLowerCase() !== 'n/a') {
-                        currentWordData = parsedJson;
                         displayResult(parsedJson, originalWord);
+                        currentWordData = { ...parsedJson, word: originalWord };
                     } else {
                         // If it's not a valid noun, handle it differently
                         handleNonNoun(parsedJson, originalWord);
+                        currentWordData = { ...parsedJson, word: originalWord };
                     }
                 } catch(e) {
                     console.error("JSON parsing error:", e);
@@ -259,13 +260,7 @@
 
             resultDiv.classList.remove('hidden');
             
-            // Since there are no articles, disable the sentence button and show a message
-            sentenceBtn.disabled = true;
-            sentenceBtn.textContent = "Cannot generate a sentence for this word";
-            sentenceBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-            sentenceBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-
-            // You can also add an informational message
+            // Re-enable button logic is handled in hideAll, so no need to repeat here
             const infoMessage = document.createElement('div');
             infoMessage.className = 'mt-4 text-center text-gray-500 text-sm';
             infoMessage.textContent = `"${capitalizedWord}" is not a German noun, so it does not have an article.`;
@@ -298,7 +293,7 @@
             sentenceError.classList.add('hidden');
             sentenceLoader.classList.add('hidden');
             
-            // Reset the sentence button
+            // Reset the sentence button to its default enabled state
             sentenceBtn.disabled = false;
             sentenceBtn.textContent = "✨ Show Example Sentence";
             sentenceBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
