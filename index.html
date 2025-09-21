@@ -262,6 +262,7 @@
             
             // Re-enable button logic is handled in hideAll, so no need to repeat here
             const infoMessage = document.createElement('div');
+            infoMessage.id = 'nonNounInfoMessage';  // unique id
             infoMessage.className = 'mt-4 text-center text-gray-500 text-sm';
             infoMessage.textContent = `"${capitalizedWord}" is not a German noun, so it does not have an article.`;
             resultDiv.prepend(infoMessage);
@@ -300,7 +301,7 @@
             sentenceBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
             
             // Clear the info message if it exists
-            const oldInfoMessage = resultDiv.querySelector('.text-sm');
+            const oldInfoMessage = document.getElementById('nonNounInfoMessage');
             if (oldInfoMessage) {
                 oldInfoMessage.remove();
             }
