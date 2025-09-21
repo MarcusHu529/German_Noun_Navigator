@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>German Article Finder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="container mx-auto p-4 max-w-md">
+        <div class="bg-white rounded-lg shadow-xl p-6">
+            <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">German Article Finder</h1>
+            <p class="text-center text-gray-500 mb-6">Enter a German noun to find its articles and translation.</p>
+            
+            <!-- Search Input -->
+            <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                <input type="text" id="wordInput" class="flex-grow w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Handy, Buch, Sonne">
+                <button id="searchBtn" class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300">
+                    Search
+                </button>
+            </div>
+
+            <!-- Results, Loader, and Error Messages -->
+            <div id="resultContainer" class="mt-6 text-center">
+                <!-- Loader -->
+                <div id="loader" class="hidden mx-auto loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
+                
+                <!-- Error Message -->
+                <div id="error" class="hidden text-red-500 font-semibold p-3 bg-red-100 rounded-lg"></div>
+
+                <!-- Success Result -->
+                <div id="result" class="hidden">
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h2 id="germanWord" class="text-3xl font-bold text-gray-800"></h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-left">
+                           <div class="p-3 bg-white rounded-lg border">
+                               <p class="text-sm text-gray-500">Gender</p>
+                               <p id="gender" class="text-lg font-semibold text-gray-700"></p>
+                           </div>
+                           <div class="p-3 bg-white rounded-lg border">
+                               <p class="text-sm text-gray-500">Definite Article</p>
+                               <p id="definiteArticle" class="text-lg font-semibold text-gray-700"></p>
+                           </div>
+                           <div class="p-3 bg-white rounded-lg border">
+                               <p class="text-sm text-gray-500">Indefinite Article</p>
+                               <p id="indefiniteArticle" class="text-lg font-semibold text-gray-700"></p>
+                           </div>
+                           <div class="p-3 bg-white rounded-lg border">
+                               <p class="text-sm text-gray-500">English Translation</p>
+                               <p id="translation" class="text-lg font-semibold text-gray-700 capitalize"></p>
+                           </div>
+                        </div>
+                         <!-- Gemini Feature: Example Sentence Button -->
+                        <div class="mt-4">
+                            <button id="sentenceBtn" class="w-full px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 transition-colors duration-300">
+                                ✨ Show Example Sentence
+                            </button>
+                        </div>
+                        <!-- Container for the sentence -->
+                        <div id="sentenceResultContainer" class="mt-4 text-center">
+                            <div id="sentenceLoader" class="hidden mx-auto loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8 mb-2"></div>
+                            <div id="sentenceError" class="hidden text-red-500 font-semibold p-3 bg-red-100 rounded-lg text-sm"></div>
+                            <div id="sentence" class="hidden bg-white p-4 rounded-lg border border-gray-200 text-left">
+                                <p class="text-sm text-gray-500">Example Sentence</p>
+                                <p id="germanSentence" class="text-md font-medium text-gray-700 mt-1"></p>
+                                <p id="englishSentence" class="text-md text-gray-600 mt-1 italic"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="text-center text-gray-400 text-xs mt-4">
+            Powered by Gemini
+        </footer>
+    </div>
+
+    <script>
+        const handleSearch = async () => {
+        const word = wordInput.value.trim();
+        if (!word) {
+            showError("Please enter a German word.");
+            return;
+        }
+
+        hideAll();
+        loader.classList.remove('hidden');
+
+        // The prompt is now part of the payload, so we need to adjust
+        const payload = {
+            contents: [{ parts: [{ text: `For the German noun "${word}", provide its gender (Masculine, Feminine, or Neuter), the nominative definite article with the noun, the nominative indefinite article with the noun, and a common English translation. If the word is not a German noun, just provide the English translation and leave the other fields blank or with a 'N/A' value.` }] }],
+            generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: "OBJECT",
+                properties: {
+                "gender": { "type": "STRING", "description": "The gender of the noun (Masculine, Feminine, or Neuter)." },
+                "definiteArticle": { "type": "STRING", "description": "The definite article plus the noun (e.g., 'der Tisch')." },
+                "indefiniteArticle": { "type": "STRING", "description": "The indefinite article plus the noun (e.g., 'ein Tisch')." },
+                "englishTranslation": { "type": "STRING", "description": "The English translation of the noun." }
+                },
+                required: ["gender", "definiteArticle", "indefiniteArticle", "englishTranslation"]
+            }
+            }
+        };
+
+        try {
+            // Call your server proxy instead of the external API
+            const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            }
+            const result = await response.json();
+            processApiResponse(result, word);
+        } catch (err) {
+            console.error("Fetch Error:", err);
+            showError(err.message);
+        } finally {
+            loader.classList.add('hidden');
+        }
+        };
+
+        const getExampleSentence = async () => {
+            if (!currentWordData || !currentWordData.word) return;
+
+            sentenceLoader.classList.remove('hidden');
+            sentence.classList.add('hidden');
+            sentenceError.classList.add('hidden');
+
+            const prompt = `Create a simple German example sentence using the word "${currentWordData.word}". Also provide the English translation of that sentence.`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "german": { "type": "STRING", "description": "The German example sentence." },
+                            "english": { "type": "STRING", "description": "The English translation of the sentence." }
+                        },
+                        required: ["german", "english"]
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                const result = await response.json();
+
+                if (result.candidates && result.candidates[0].content?.parts?.[0]?.text) {
+                    const parsedJson = JSON.parse(result.candidates[0].content.parts[0].text);
+                    germanSentence.textContent = parsedJson.german;
+                    englishSentence.textContent = parsedJson.english;
+                    sentence.classList.remove('hidden');
+                } else {
+                    throw new Error("Could not generate sentence from API response.");
+                }
+            } catch (err) {
+                console.error("Sentence Fetch Error:", err);
+                sentenceError.textContent = "Sorry, I couldn't generate a sentence right now.";
+                sentenceError.classList.remove('hidden');
+            } finally {
+                sentenceLoader.classList.add('hidden');
+            }
+        };
+    </script>
+</body>
+</html>
