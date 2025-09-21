@@ -130,12 +130,9 @@
             hideAll();
             loader.classList.remove('hidden');
             
-            // IMPORTANT: To run this on your local computer, you need a Gemini API key.
-            // 1. Get a key from Google AI Studio: https://aistudio.google.com/app/apikey
-            // 2. Paste the key below, replacing "YOUR_API_KEY_HERE".
             const apiKey = "AIzaSyCsIIVrpwjkGbJl3RO7DICyEuxb44HTo6I"; 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            const prompt = `For the German noun "${word}", provide its gender (Masculine, Feminine, or Neuter), the nominative definite article with the noun, the nominative indefinite article with the noun, and a common English translation.`;
+            const prompt = `For the German noun "${word}", provide its gender (Masculine, Feminine, or Neuter), the nominative definite article with the noun, the nominative indefinite article with the noun, and a common English translation. If the word is not a German noun, just provide the English translation and leave the other fields blank or with a 'N/A' value.`;
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
@@ -154,9 +151,6 @@
             };
 
             try {
-                if (apiKey === "YOUR_API_KEY_HERE") {
-                    throw new Error("Please replace 'YOUR_API_KEY_HERE' with your actual Gemini API key.");
-                }
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -174,13 +168,12 @@
         };
 
         const getExampleSentence = async () => {
-            if (!currentWordData) return;
+            if (!currentWordData || !currentWordData.definiteArticle) return;
 
             sentenceLoader.classList.remove('hidden');
             sentence.classList.add('hidden');
             sentenceError.classList.add('hidden');
 
-            // IMPORTANT: Make sure your API key is also set in the handleSearch function.
             const apiKey = "AIzaSyCsIIVrpwjkGbJl3RO7DICyEuxb44HTo6I";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
             const prompt = `Create a simple German example sentence using the noun "${currentWordData.definiteArticle}". Also provide the English translation of that sentence.`;
@@ -198,10 +191,7 @@
                     }
                 }
             };
-             try {
-                if (apiKey === "YOUR_API_KEY_HERE") {
-                    throw new Error("API key is missing. Please add it to the script.");
-                }
+            try {
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -240,14 +230,14 @@
                     
                     // Check for valid articles. If they are missing or don't make sense,
                     // it's likely not a noun.
-                    if (parsedJson.definiteArticle && parsedJson.indefiniteArticle) {
+                    if (parsedJson.definiteArticle && parsedJson.indefiniteArticle && parsedJson.definiteArticle.toLowerCase() !== 'n/a') {
                         currentWordData = parsedJson;
                         displayResult(parsedJson, originalWord);
                     } else {
                         // If it's not a valid noun, handle it differently
                         handleNonNoun(parsedJson, originalWord);
                     }
-                } catch (e) {
+                } catch(e) {
                     console.error("JSON parsing error:", e);
                     showError(`Could not process the data for "${originalWord}". The word might not be a valid German noun.`);
                 }
@@ -278,30 +268,8 @@
             // You can also add an informational message
             const infoMessage = document.createElement('div');
             infoMessage.className = 'mt-4 text-center text-gray-500 text-sm';
-            infoMessage.textContent = '"' + capitalizedWord + '" is not a German noun, so it does not have an article.';
+            infoMessage.textContent = `"${capitalizedWord}" is not a German noun, so it does not have an article.`;
             resultDiv.prepend(infoMessage);
-        }
-
-        // You will also need to reset the button state on a new search
-        function hideAll() {
-            errorDiv.classList.add('hidden');
-            resultDiv.classList.add('hidden');
-            loader.classList.add('hidden');
-            sentence.classList.add('hidden');
-            sentenceError.classList.add('hidden');
-            sentenceLoader.classList.add('hidden');
-            
-            // Reset the sentence button
-            sentenceBtn.disabled = false;
-            sentenceBtn.textContent = "✨ Show Example Sentence";
-            sentenceBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
-            sentenceBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
-            
-            // Clear the info message if it exists
-            const oldInfoMessage = resultDiv.querySelector('.text-sm');
-            if (oldInfoMessage) {
-                oldInfoMessage.remove();
-            }
         }
 
         function displayResult(data, word) {
@@ -322,9 +290,26 @@
             errorDiv.classList.remove('hidden');
         }
         
-
-
+        function hideAll() {
+            errorDiv.classList.add('hidden');
+            resultDiv.classList.add('hidden');
+            loader.classList.add('hidden');
+            sentence.classList.add('hidden');
+            sentenceError.classList.add('hidden');
+            sentenceLoader.classList.add('hidden');
+            
+            // Reset the sentence button
+            sentenceBtn.disabled = false;
+            sentenceBtn.textContent = "✨ Show Example Sentence";
+            sentenceBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            sentenceBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+            
+            // Clear the info message if it exists
+            const oldInfoMessage = resultDiv.querySelector('.text-sm');
+            if (oldInfoMessage) {
+                oldInfoMessage.remove();
+            }
+        }
     </script>
 </body>
 </html>
-
