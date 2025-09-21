@@ -125,7 +125,7 @@
 
         try {
             // Call your server proxy instead of the external API
-            const response = await fetch('/api/gemini', {
+            const response = await fetch('/ .netlify/functions/gemini-proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -168,7 +168,7 @@
             };
             
             try {
-                const response = await fetch('/api/gemini', {
+                const response = await fetch('/ .netlify/functions/gemini-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)

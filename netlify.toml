@@ -1,0 +1,9 @@
+[build]
+  # This is the directory where your static files (HTML, CSS, JS) are
+  publish = "public"
+  # This is the command Netlify will run to build your site (if any)
+  command = "echo 'No build command specified'"
+
+[functions]
+  # This tells Netlify where your serverless functions are located
+  directory = "functions"
