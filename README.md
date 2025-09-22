@@ -32,7 +32,13 @@ A simple web application that helps you find the correct German articles (der, d
 
 4. Start the server:
     - To run this application locally, you'll need the netlify-cli to simulate the serverless environment.
-        - npm install netlify-cli -g
+        - curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+            - Check: node -v 
+                    npm -v
+        - npm install -g netlify-cli
+            - Check: netlify --version
+        - cd ~/projects/German_Noun_Navigator
         - netlify dev
     - Open your browser and navigate to http://localhost:8888.
 
