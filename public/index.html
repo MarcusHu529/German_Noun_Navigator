@@ -6,24 +6,7 @@
     <title>German Article Finder</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .loader {
-            border-top-color: #3498db;
-            -webkit-animation: spinner 1.5s linear infinite;
-            animation: spinner 1.5s linear infinite;
-        }
-        @-webkit-keyframes spinner {
-            0% { -webkit-transform: rotate(0deg); }
-            100% { -webkit-transform: rotate(360deg); }
-        }
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
     <div class="container mx-auto p-4 max-w-md">
@@ -31,7 +14,6 @@
             <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">German Noun Navigator</h1>
             <p class="text-center text-gray-500 mb-6">Enter a German noun to find its articles and translation.</p>
             
-            <!-- Search Input -->
             <div class="flex flex-col sm:flex-row gap-2 mb-4">
                 <input type="text" id="wordInput" class="flex-grow w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Handy, Buch, Sonne">
                 <button id="searchBtn" class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300">
@@ -39,15 +21,11 @@
                 </button>
             </div>
 
-            <!-- Results, Loader, and Error Messages -->
             <div id="resultContainer" class="mt-6 text-center">
-                <!-- Loader -->
                 <div id="loader" class="hidden mx-auto loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
                 
-                <!-- Error Message -->
                 <div id="error" class="hidden text-red-500 font-semibold p-3 bg-red-100 rounded-lg"></div>
 
-                <!-- Success Result -->
                 <div id="result" class="hidden">
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <h2 id="germanWord" class="text-3xl font-bold text-gray-800"></h2>
@@ -69,13 +47,11 @@
                                <p id="translation" class="text-lg font-semibold text-gray-700 capitalize"></p>
                            </div>
                         </div>
-                         <!-- Gemini Feature: Example Sentence Button -->
-                        <div class="mt-4">
+                         <div class="mt-4">
                             <button id="sentenceBtn" class="w-full px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 transition-colors duration-300">
                                 ✨ Show Example Sentence
                             </button>
                         </div>
-                        <!-- Container for the sentence -->
                         <div id="sentenceResultContainer" class="mt-4 text-center">
                             <div id="sentenceLoader" class="hidden mx-auto loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8 mb-2"></div>
                             <div id="sentenceError" class="hidden text-red-500 font-semibold p-3 bg-red-100 rounded-lg text-sm"></div>
